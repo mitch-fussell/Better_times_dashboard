@@ -35,9 +35,11 @@ export default function ClientCombobox({
     // While a client is selected the box shows its name; treat that as "show all"
     // so the dropdown lets you pick a different client.
     const effective = q === selName.trim().toLowerCase() ? "" : q;
-    const list =
-      effective === "" ? clients : clients.filter((c) => c.name.toLowerCase().includes(effective));
-    return list.slice(0, 8);
+    // Show every match and let the dropdown scroll (it has max-h + overflow).
+    // Capping the list hid most clients even though the box could scroll.
+    return effective === ""
+      ? clients
+      : clients.filter((c) => c.name.toLowerCase().includes(effective));
   }, [clients, text, selName]);
 
   // Close on outside click.
