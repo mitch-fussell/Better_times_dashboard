@@ -16,6 +16,14 @@ export default function AccountMenu() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Change-password sub-panel state.
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pw1, setPw1] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwDone, setPwDone] = useState(false);
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       const u = data.user;
@@ -42,6 +50,30 @@ export default function AccountMenu() {
     setName(next);
     setOpen(false);
     router.refresh();
+  }
+
+  async function changePassword() {
+    setPwError(null);
+    setPwDone(false);
+    if (pw1.length < 6) {
+      setPwError("Password must be at least 6 characters.");
+      return;
+    }
+    if (pw1 !== pw2) {
+      setPwError("Passwords don't match.");
+      return;
+    }
+    setPwSaving(true);
+    const { error } = await supabase.auth.updateUser({ password: pw1 });
+    setPwSaving(false);
+    if (error) {
+      setPwError(error.message);
+      return;
+    }
+    setPw1("");
+    setPw2("");
+    setPwOpen(false);
+    setPwDone(true);
   }
 
   async function signOut() {
@@ -88,6 +120,66 @@ export default function AccountMenu() {
                 {email}
               </p>
             )}
+            <div className="my-2 border-t border-slate-100" />
+
+            {!pwOpen ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setPwOpen(true);
+                  setPwDone(false);
+                  setPwError(null);
+                }}
+                className="w-full rounded-lg px-3 py-1.5 text-left text-sm text-slate-600 hover:bg-slate-50"
+              >
+                Change password
+              </button>
+            ) : (
+              <div className="rounded-lg bg-slate-50 p-2">
+                <label className="block text-xs font-medium text-slate-500">New password</label>
+                <input
+                  type="password"
+                  value={pw1}
+                  onChange={(e) => setPw1(e.target.value)}
+                  autoComplete="new-password"
+                  placeholder="At least 6 characters"
+                  className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+                />
+                <input
+                  type="password"
+                  value={pw2}
+                  onChange={(e) => setPw2(e.target.value)}
+                  autoComplete="new-password"
+                  placeholder="Confirm new password"
+                  className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+                />
+                {pwError && <p className="mt-2 text-xs text-red-600">{pwError}</p>}
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={changePassword}
+                    disabled={pwSaving || !pw1 || !pw2}
+                    className="flex-1 rounded-lg bg-brand px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-dark disabled:opacity-50"
+                  >
+                    {pwSaving ? "Updating…" : "Update password"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPwOpen(false);
+                      setPw1("");
+                      setPw2("");
+                      setPwError(null);
+                    }}
+                    className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-600 hover:bg-white"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+            {pwDone && <p className="mt-2 text-xs text-emerald-600">Password updated.</p>}
+
             <div className="my-2 border-t border-slate-100" />
             <button
               type="button"
