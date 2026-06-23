@@ -12,7 +12,7 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: "overdue", label: "Overdue" },
   { key: "ontrack", label: "On track" },
   { key: "onboarding", label: "Onboarding" },
-  { key: "issue", label: "Recent issue" },
+  { key: "issue", label: "Recent ticket" },
 ];
 
 function matchesFilter(h: ClientHealth, f: Filter): boolean {
@@ -53,7 +53,7 @@ function LastContact({ h }: { h: ClientHealth }) {
 function MiniCounts({ h }: { h: ClientHealth }) {
   const parts = [
     { n: h.counts.proactive, dot: TYPE_META.proactive.dot, title: "Proactive" },
-    { n: h.counts.reactive, dot: TYPE_META.reactive.dot, title: "Reactive" },
+    { n: h.counts.reactive, dot: TYPE_META.reactive.dot, title: "Tickets" },
     { n: h.counts.onboarding, dot: TYPE_META.onboarding.dot, title: "Onboarding" },
   ];
   return (
@@ -155,10 +155,10 @@ export default function AttentionQueue({
                     {h.client.status !== "active" && <StatusBadge status={h.client.status} />}
                     {h.recentReactive > 0 && (
                       <span
-                        title="Had a reactive issue in the last 30 days"
+                        title="Had a ticket in the last 30 days"
                         className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700"
                       >
-                        recent issue
+                        recent ticket
                       </span>
                     )}
                   </div>

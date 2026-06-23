@@ -98,7 +98,6 @@ export default function CheckInModal({
         <input
           type="date"
           value={date}
-          max={todayISO()}
           onChange={(e) => setDate(e.target.value)}
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
         />

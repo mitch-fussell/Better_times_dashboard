@@ -35,7 +35,7 @@ export interface ClientHealth {
 
 export const TYPE_META: Record<CheckInType, { label: string; dot: string; chip: string }> = {
   proactive: { label: "Proactive", dot: "bg-emerald-500", chip: "bg-emerald-100 text-emerald-800" },
-  reactive: { label: "Reactive", dot: "bg-red-500", chip: "bg-red-100 text-red-800" },
+  reactive: { label: "Tickets", dot: "bg-red-500", chip: "bg-red-100 text-red-800" },
   onboarding: { label: "Onboarding", dot: "bg-amber-400", chip: "bg-amber-100 text-amber-800" },
 };
 

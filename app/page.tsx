@@ -59,7 +59,7 @@ export default async function Dashboard() {
           <StatCard
             label="Proactive rate"
             value={ratioPct}
-            sub={`${totals.proactive} proactive · ${totals.reactive} reactive`}
+            sub={`${totals.proactive} proactive · ${totals.reactive} tickets`}
             tone="good"
           />
           <StatCard label="Onboarding" value={String(totals.onboarding)} sub="check-ins logged" />
