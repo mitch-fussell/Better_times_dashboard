@@ -1,15 +1,10 @@
 import { fetchData } from "@/lib/data";
-import { todayISO, type CheckInType } from "@/lib/metrics";
+import { buildHealth, rollup, todayISO } from "@/lib/metrics";
 import NavBar from "@/components/NavBar";
 import CalendarGrid from "@/components/CalendarGrid";
 
 export const dynamic = "force-dynamic";
 
-const CELL: Record<CheckInType, string> = {
-  proactive: "bg-emerald-500",
-  reactive: "bg-red-500",
-  onboarding: "bg-amber-400",
-};
 function enumerateDates(startISO: string, endISO: string): string[] {
   const out: string[] = [];
   const start = Date.parse(startISO + "T00:00:00Z");
@@ -28,7 +23,7 @@ export default async function Calendar({
 }: {
   searchParams: Promise<{ range?: string }>;
 }) {
-  const { clients, checkIns } = await fetchData();
+  const { clients, checkIns, categories } = await fetchData();
   const today = todayISO();
 
   const requested = (await searchParams).range ?? "";
@@ -52,13 +47,26 @@ export default async function Calendar({
   // client_id -> date -> types logged that day (within the window). Plain
   // objects/arrays so it serializes to the client grid, which decides what to
   // show based on the active type filter.
-  const grid: Record<string, Record<string, CheckInType[]>> = {};
+  const grid: Record<string, Record<string, string[]>> = {};
+  const countsByType: Record<string, number> = {};
+  const contacted = new Set<string>();
   for (const c of checkIns) {
     if (c.occurred_on < windowStart || c.occurred_on > windowEnd) continue;
     const row = (grid[c.client_id] ??= {});
     const arr = (row[c.occurred_on] ??= []);
     if (!arr.includes(c.type)) arr.push(c.type);
+    countsByType[c.type] = (countsByType[c.type] ?? 0) + 1;
+    contacted.add(c.client_id);
   }
+
+  // Overdue is "right now" across all history, not tied to the visible window.
+  const overdueCount = rollup(buildHealth(clients, checkIns)).overdue;
+  const metrics = {
+    countsByType,
+    contactedCount: contacted.size,
+    clientsTotal: clients.length,
+    overdueCount,
+  };
 
   const sortedClients = [...clients]
     .sort((a, b) => a.name.localeCompare(b.name))
@@ -70,6 +78,7 @@ export default async function Calendar({
   for (const d of dates) {
     const label = new Date(d + "T00:00:00Z").toLocaleString("en-US", {
       month: "short",
+      year: "2-digit",
       timeZone: "UTC",
     });
     const last = monthSpans[monthSpans.length - 1];
@@ -82,10 +91,9 @@ export default async function Calendar({
       <NavBar clients={clientOptions} />
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
         <h1 className="text-xl font-semibold text-brand">Check-in calendar</h1>
-        <div className="mt-1 flex items-center gap-4 text-sm text-slate-500">
-          <span>Each cell is a logged check-in. Click any cell to log one.</span>
-          <Legend />
-        </div>
+        <p className="mt-1 text-sm text-slate-500">
+          Each cell is a logged check-in. Click any cell to log one.
+        </p>
 
         <div className="mt-5">
           <CalendarGrid
@@ -95,27 +103,11 @@ export default async function Calendar({
             grid={grid}
             today={today}
             range={range}
+            categories={categories}
+            metrics={metrics}
           />
         </div>
       </main>
     </>
-  );
-}
-
-function Legend() {
-  const items: { t: CheckInType; label: string }[] = [
-    { t: "proactive", label: "Proactive" },
-    { t: "reactive", label: "Tickets" },
-    { t: "onboarding", label: "Onboarding" },
-  ];
-  return (
-    <div className="flex items-center gap-3">
-      {items.map((i) => (
-        <span key={i.t} className="flex items-center gap-1.5">
-          <span className={`h-3 w-3 rounded-sm ${CELL[i.t]}`} />
-          {i.label}
-        </span>
-      ))}
-    </div>
   );
 }

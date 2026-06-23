@@ -1,11 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import { TYPE_META, todayISO, type CheckInType, type Client } from "@/lib/metrics";
-
-const TYPES: CheckInType[] = ["proactive", "reactive", "onboarding"];
+import { todayISO, type Category, type Client } from "@/lib/metrics";
 
 // Check-in dialog. Both the nav-bar "Log check-in" button and the clickable
 // calendar cells render this; they mount it (with a key) to open it and pass
@@ -21,17 +19,30 @@ export default function CheckInModal({
   clients: Pick<Client, "id" | "name">[];
   defaultClientId?: string;
   defaultDate?: string;
-  defaultType?: CheckInType;
+  defaultType?: string;
 }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [categories, setCategories] = useState<Category[]>([]);
   const [clientId, setClientId] = useState(defaultClientId ?? clients[0]?.id ?? "");
-  const [type, setType] = useState<CheckInType>(defaultType);
+  const [type, setType] = useState<string>(defaultType);
   const [date, setDate] = useState(defaultDate ?? todayISO());
   const [topic, setTopic] = useState("");
   const [notes, setNotes] = useState("");
+
+  // Categories (with their colours) come from the database so newly added ones
+  // are immediately loggable from anywhere this dialog opens.
+  useEffect(() => {
+    supabase
+      .from("check_in_types")
+      .select("*")
+      .order("precedence")
+      .then(({ data }) => {
+        if (data) setCategories(data as Category[]);
+      });
+  }, []);
 
   async function submit() {
     setSaving(true);
@@ -77,19 +88,22 @@ export default function CheckInModal({
         </select>
 
         <label className="mt-4 block text-sm font-medium text-slate-700">Type</label>
-        <div className="mt-1 grid grid-cols-3 gap-2">
-          {TYPES.map((t) => (
+        <div className="mt-1 flex flex-wrap gap-2">
+          {categories.map((c) => (
             <button
-              key={t}
-              onClick={() => setType(t)}
-              className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-sm ${
-                type === t
+              key={c.slug}
+              onClick={() => setType(c.slug)}
+              className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm ${
+                type === c.slug
                   ? "border-brand bg-brand text-white"
                   : "border-slate-300 text-slate-700 hover:bg-slate-50"
               }`}
             >
-              <span className={`h-2.5 w-2.5 rounded-full ${TYPE_META[t].dot}`} />
-              {TYPE_META[t].label}
+              <span
+                className="h-2.5 w-2.5 rounded-full"
+                style={{ backgroundColor: c.color }}
+              />
+              {c.label}
             </button>
           ))}
         </div>

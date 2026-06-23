@@ -17,9 +17,18 @@ export interface CheckIn {
   id: string;
   client_id: string;
   occurred_on: string; // YYYY-MM-DD
-  type: CheckInType;
+  type: string; // a check_in_types.slug — built-ins or user-added categories
   topic: string | null;
   notes: string | null;
+}
+
+// A check-in category, stored in check_in_types. Built-ins (proactive,
+// reactive, onboarding) are seeded; users can add more with their own colour.
+export interface Category {
+  slug: string;
+  label: string;
+  color: string; // hex, e.g. #ef4444
+  precedence: number; // lower = more notable when several land on one day
 }
 
 export interface ClientHealth {
@@ -27,7 +36,10 @@ export interface ClientHealth {
   lastContact: string | null;
   daysSince: number | null; // null = never contacted
   overdue: boolean;
-  counts: { proactive: number; reactive: number; onboarding: number; total: number };
+  counts: { total: number; proactive: number; reactive: number; onboarding: number } & Record<
+    string,
+    number
+  >;
   recentReactive: number; // reactive check-ins in the last 30 days
   proactiveRatio: number | null; // proactive / (proactive + reactive)
   riskScore: number; // higher = needs attention sooner
@@ -66,10 +78,15 @@ export function buildHealth(
     const items = (byClient.get(client.id) ?? []).slice().sort((a, b) =>
       a.occurred_on < b.occurred_on ? 1 : -1
     );
-    const counts = { proactive: 0, reactive: 0, onboarding: 0, total: items.length };
+    const counts = { total: items.length, proactive: 0, reactive: 0, onboarding: 0 } as {
+      total: number;
+      proactive: number;
+      reactive: number;
+      onboarding: number;
+    } & Record<string, number>;
     let recentReactive = 0;
     for (const it of items) {
-      counts[it.type] += 1;
+      counts[it.type] = (counts[it.type] ?? 0) + 1;
       if (it.type === "reactive" && daysBetween(it.occurred_on, today) <= 30) recentReactive += 1;
     }
     const lastContact = items[0]?.occurred_on ?? null;

@@ -4,10 +4,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import LogCheckIn from "./LogCheckIn";
+import AccountMenu from "./AccountMenu";
 import type { Client } from "@/lib/metrics";
 
 export default function NavBar({ clients }: { clients: Pick<Client, "id" | "name">[] }) {
   const path = usePathname();
+
   const tabs = [
     { href: "/", label: "Dashboard" },
     { href: "/calendar", label: "Calendar" },
@@ -43,7 +45,10 @@ export default function NavBar({ clients }: { clients: Pick<Client, "id" | "name
             })}
           </nav>
         </div>
-        <LogCheckIn clients={clients} />
+        <div className="flex items-center gap-2">
+          <LogCheckIn clients={clients} />
+          <AccountMenu />
+        </div>
       </div>
       {/* Brand accent strip: blue → cyan → pink */}
       <div className="h-1 w-full bg-gradient-to-r from-brand via-sky to-accent" />
