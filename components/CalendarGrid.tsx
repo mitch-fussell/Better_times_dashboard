@@ -11,7 +11,7 @@ import ManageCategories from "./ManageCategories";
 // whole pixels independently, which both varied the cell sizes and squished the
 // two-digit date numbers.
 const NAME_COL_PX = 192; // matches the w-48 client column
-const CELL_PX = 36; // wide enough that two-digit dates sit comfortably, not squished
+const CELL_PX = 26; // wide columns so dates have room and cells read clearly
 
 // Vertical window: only ~15 client rows show at once, so the grid stays compact
 // and the cells can be taller/easier to read. The rest scroll within the box,
@@ -27,6 +27,12 @@ interface Metrics {
   contactedCount: number;
   clientsTotal: number;
   overdueCount: number;
+}
+
+// One logged check-in in a day cell: its category slug and who logged it.
+interface CellEntry {
+  type: string;
+  by: string | null;
 }
 
 // The calendar grid is interactive: clicking any day cell opens a small dropdown
@@ -45,8 +51,8 @@ export default function CalendarGrid({
   clients: Pick<Client, "id" | "name">[];
   dates: string[];
   monthSpans: { label: string; count: number }[];
-  // client_id -> date -> category slugs logged that day
-  grid: Record<string, Record<string, string[]>>;
+  // client_id -> date -> check-ins logged that day (category slug + who logged it)
+  grid: Record<string, Record<string, CellEntry[]>>;
   today: string;
   range: string;
   categories: Category[];
@@ -198,7 +204,10 @@ export default function CalendarGrid({
           className="overflow-auto rounded-b-xl"
           style={{ maxHeight: SCROLL_MAX_PX }}
         >
-          <table className="table-fixed border-separate border-spacing-0 text-xs">
+          <table
+            className="table-fixed border-separate border-spacing-0 text-xs"
+            style={{ width: NAME_COL_PX + dates.length * CELL_PX }}
+          >
             <colgroup>
               <col style={{ width: NAME_COL_PX }} />
               {dates.map((d) => (
@@ -233,14 +242,11 @@ export default function CalendarGrid({
                   const day = new Date(d + "T00:00:00Z");
                   const dow = day.getUTCDay();
                   const weekend = dow === 0 || dow === 6;
-                  const monthStart = d.slice(8, 10) === "01";
                   const weekStart = dow === 1;
                   const isToday = d === today;
-                  const divider = monthStart
-                    ? "border-l-2 border-l-slate-400"
-                    : weekStart
-                      ? "border-l border-l-black"
-                      : "";
+                  // Only the week separator runs down the grid. The month split
+                  // is shown by the boxed label in the header row, not a column bar.
+                  const divider = weekStart ? "border-l border-l-black" : "";
                   const weekdayLetter = day.toLocaleString("en-US", {
                     weekday: "narrow",
                     timeZone: "UTC",
@@ -256,7 +262,7 @@ export default function CalendarGrid({
                     >
                       <span className="flex flex-col items-center leading-tight">
                         <span className="text-[10px] uppercase text-black">{weekdayLetter}</span>
-                        <span className="text-sm font-medium tabular-nums">{d.slice(8, 10)}</span>
+                        <span className="text-xs font-medium tabular-nums">{d.slice(8, 10)}</span>
                       </span>
                     </th>
                   );
@@ -277,32 +283,36 @@ export default function CalendarGrid({
                     </td>
                     {dates.map((d) => {
                       // Most notable category present that isn't hidden.
-                      const present = row?.[d];
+                      const entries = row?.[d];
+                      const slugs = entries?.map((e) => e.type);
                       const winning =
-                        present && present.length
-                          ? orderedSlugs.find((s) => present.includes(s) && !hidden.has(s))
+                        slugs && slugs.length
+                          ? orderedSlugs.find((s) => slugs.includes(s) && !hidden.has(s))
                           : undefined;
                       const color = winning ? catBySlug.get(winning)?.color : undefined;
                       const dow = new Date(d + "T00:00:00Z").getUTCDay();
                       const weekend = dow === 0 || dow === 6;
-                      const monthStart = d.slice(8, 10) === "01";
                       const weekStart = dow === 1;
                       const isToday = d === today;
-                      const divider = monthStart
-                        ? "border-l-2 border-l-slate-400"
-                        : weekStart
-                          ? "border-l-black"
-                          : "";
+                      const divider = weekStart ? "border-l-black" : "";
                       const selected = menu?.clientId === client.id && menu?.date === d;
-                      const label = winning ? catBySlug.get(winning)?.label : undefined;
+                      // Tooltip lists what was logged and who logged it.
+                      const summary = entries?.length
+                        ? entries
+                            .map((e) => {
+                              const lbl = catBySlug.get(e.type)?.label ?? e.type;
+                              return e.by ? `${lbl} by ${e.by}` : lbl;
+                            })
+                            .join(", ")
+                        : null;
                       return (
                         <td
                           key={d}
                           onClick={(e) => openMenu(e, client.id, client.name, d)}
                           style={{ height: ROW_PX, ...(color ? { backgroundColor: color } : {}) }}
                           title={
-                            label
-                              ? `${client.name} · ${d} · ${label} — click to log another`
+                            summary
+                              ? `${client.name} · ${d} · ${summary} — click to log another`
                               : `${client.name} · ${d} — click to log`
                           }
                           className={`cursor-pointer border border-white hover:ring-2 hover:ring-inset hover:ring-brand ${divider} ${
@@ -326,14 +336,41 @@ export default function CalendarGrid({
           {/* Backdrop closes the menu on an outside click. */}
           <div className="fixed inset-0 z-40" onClick={() => setMenu(null)} />
           <div
-            className="fixed z-50 w-48 rounded-lg border border-slate-200 bg-white py-1 shadow-xl"
+            className="fixed z-50 w-56 rounded-lg border border-slate-200 bg-white py-1 shadow-xl"
             style={{ top: menu.y, left: menu.x }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-3 py-1.5 text-xs text-slate-500">
               <span className="font-medium text-slate-700">{menu.clientName}</span> · {menu.date}
             </div>
+
+            {/* Existing check-ins for this day, with who logged each one. */}
+            {(() => {
+              const existing = grid[menu.clientId]?.[menu.date];
+              if (!existing?.length) return null;
+              return (
+                <div className="border-t border-slate-100 px-3 py-1.5">
+                  <p className="text-[11px] font-medium uppercase text-slate-400">Logged</p>
+                  <ul className="mt-1 space-y-1">
+                    {existing.map((e, i) => (
+                      <li key={i} className="flex items-center gap-2 text-xs text-slate-600">
+                        <span
+                          className="h-2 w-2 shrink-0 rounded-full"
+                          style={{ backgroundColor: catBySlug.get(e.type)?.color ?? "#cbd5e1" }}
+                        />
+                        <span>{catBySlug.get(e.type)?.label ?? e.type}</span>
+                        <span className="text-slate-400">{e.by ? `· ${e.by}` : "· unknown"}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })()}
+
             <div className="my-1 border-t border-slate-100" />
+            <p className="px-3 pb-1 text-[11px] font-medium uppercase text-slate-400">
+              Log a check-in
+            </p>
             {categories.map((c) => (
               <button
                 key={c.slug}

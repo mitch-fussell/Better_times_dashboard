@@ -23,8 +23,11 @@ export default async function Calendar({
 }: {
   searchParams: Promise<{ range?: string }>;
 }) {
-  const { clients, checkIns, categories } = await fetchData();
+  const { clients, checkIns, categories, profiles } = await fetchData();
   const today = todayISO();
+
+  // Map each author's id to a display name (null if they haven't set one).
+  const nameById = new Map(profiles.map((p) => [p.id, p.display_name?.trim() || null]));
 
   const requested = (await searchParams).range ?? "";
   const range = requested in RANGE_MONTHS ? requested : DEFAULT_RANGE;
@@ -44,17 +47,18 @@ export default async function Calendar({
   const windowEnd = new Date(mondayThisWeek + 13 * DAY).toISOString().slice(0, 10);
   const dates = enumerateDates(windowStart, windowEnd);
 
-  // client_id -> date -> types logged that day (within the window). Plain
-  // objects/arrays so it serializes to the client grid, which decides what to
-  // show based on the active type filter.
-  const grid: Record<string, Record<string, string[]>> = {};
+  // client_id -> date -> check-ins logged that day (within the window), each
+  // with its category slug and who logged it. Plain objects/arrays so it
+  // serializes to the client grid, which decides what to show based on the
+  // active type filter.
+  const grid: Record<string, Record<string, { type: string; by: string | null }[]>> = {};
   const countsByType: Record<string, number> = {};
   const contacted = new Set<string>();
   for (const c of checkIns) {
     if (c.occurred_on < windowStart || c.occurred_on > windowEnd) continue;
     const row = (grid[c.client_id] ??= {});
     const arr = (row[c.occurred_on] ??= []);
-    if (!arr.includes(c.type)) arr.push(c.type);
+    arr.push({ type: c.type, by: c.created_by ? nameById.get(c.created_by) ?? null : null });
     countsByType[c.type] = (countsByType[c.type] ?? 0) + 1;
     contacted.add(c.client_id);
   }

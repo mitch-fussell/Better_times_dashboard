@@ -20,6 +20,7 @@ export interface CheckIn {
   type: string; // a check_in_types.slug — built-ins or user-added categories
   topic: string | null;
   notes: string | null;
+  created_by: string | null; // auth user id of whoever logged it
 }
 
 // A check-in category, stored in check_in_types. Built-ins (proactive,
