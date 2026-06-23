@@ -5,7 +5,7 @@ own Supabase database** instead of the original. It covers the stack, the code
 layout, the full database schema (as copy-pasteable SQL), the auth/security model,
 local development, data import, and deployment.
 
-For a product-level overview of what the app does, see [`README.md`](./README.md).
+For a product-level overview of what the app does, see [`README.md`](../README.md).
 
 ---
 

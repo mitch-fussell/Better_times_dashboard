@@ -1,0 +1,82 @@
+HANDING OVER OWNERSHIP OF THE BETTERTIMES DASHBOARD
+===================================================
+
+"The app" is really three separate accounts you own, plus the code.
+To hand it over fully, you transfer each one.
+
+   CODE      -> GitHub    (the app's source code)
+   HOSTING   -> Vercel    (the live website and its URL)
+   DATABASE  -> Supabase  (all client data, logins, and check-ins)
+
+
+FIRST, DECIDE WHICH KIND OF HANDOVER THIS IS
+--------------------------------------------
+A) Hand over the LIVE app, with its existing data and URL intact.
+   -> Transfer all three (GitHub + Vercel + Supabase). Follow the whole list.
+
+B) Just give someone the code so they run their OWN copy.
+   -> You only need to share/transfer the GitHub repo. They follow the
+      HANDOVER.md file in the project to set up their own hosting and database.
+      You can skip the Vercel and Supabase steps below.
+
+
+THE GOLDEN RULE
+---------------
+Add the new owner to everything FIRST. Let them confirm it all works for them.
+Only THEN transfer ownership and remove yourself. If you remove your own access
+too early, you could lock both of you out.
+
+
+THE CHECKLIST
+-------------
+
+[ ] 1. GITHUB (the code)
+       - Add them as a collaborator:
+         Repository -> Settings -> Collaborators -> add their username.
+       - To give full ownership:
+         Repository -> Settings -> General -> Danger Zone -> Transfer ownership.
+
+[ ] 2. SUPABASE (the data - the most important piece)
+       - This holds all real client data and the team logins. Be careful.
+       - Add them to your Supabase organization as an Owner:
+         Organization -> Team -> invite them.
+       - To move it fully to them:
+         Project Settings -> General -> Transfer project (into an organization
+         they control).
+       - NOTE: billing follows the organization, so whoever owns the org pays.
+
+[ ] 3. VERCEL (the website)
+       - Simplest: once they own the GitHub repo, they sign into their own
+         Vercel, import the repo, add the two settings from step 5, and deploy.
+       - To keep the same URL/project: Project -> Settings -> Advanced ->
+         Transfer project to their account/team.
+
+[ ] 4. HAND OVER THE DOCUMENTS
+       - HANDOVER.md     -> for a developer (full technical setup)
+       - how-it-works.txt -> plain-English overview of what the app does
+       Both are already in the project.
+
+[ ] 5. HAND OVER THE TWO SETTINGS (so the site keeps running)
+       These are the "environment variables" the app needs. You can find them
+       in Supabase (Project Settings -> API):
+         NEXT_PUBLIC_SUPABASE_URL       = the project URL
+         NEXT_PUBLIC_SUPABASE_ANON_KEY  = the public (anon / publishable) key
+       The new owner enters these in Vercel (Project -> Settings ->
+       Environment Variables). They are safe to share - the data is protected
+       by login + database security, not by keeping these secret.
+
+[ ] 6. CONFIRM IT ALL WORKS FOR THEM
+       - They can log in to the live site.
+       - They can see the client data and the calendar.
+       - They can deploy/update it.
+
+[ ] 7. ONLY NOW, STEP AWAY
+       - Transfer final ownership / billing where you haven't already.
+       - Remove yourself from each service if you no longer need access.
+
+
+QUICK SUMMARY
+-------------
+Add them everywhere -> they confirm it works -> transfer ownership -> remove
+yourself. Three accounts (GitHub, Vercel, Supabase) and two settings to pass
+along. That's the whole handover.
