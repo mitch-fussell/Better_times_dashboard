@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #2e6ca8; /* BetterTimes blue */
+  --color-brand-dark: #1f5184; /* deeper blue for hover */
+  --color-accent: #d80c60; /* BetterTimes pink CTA */
+  --color-accent-dark: #b00a4e;
+  --color-sky: #24c0e4; /* BetterTimes cyan */
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: #ffffff;
+  color: #0f172a; /* slate-900 */
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
