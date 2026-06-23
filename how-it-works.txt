@@ -1,0 +1,65 @@
+BETTERTIMES DASHBOARD — HOW IT WORKS
+====================================
+
+What it's for
+-------------
+It answers one question a coloured spreadsheet can't easily: "Which clients
+haven't we spoken to lately, and who recently had a problem?" Instead of
+scrolling a giant grid, the dashboard tells you who needs attention.
+
+
+Signing in
+----------
+The dashboard lives on a web page. Everyone on the team has their own login
+(email + password), so you can see who did what. You can change your name or
+your password any time from the menu in the top-right corner.
+
+
+The two main screens
+--------------------
+1. The home screen ("attention queue")
+   A simple list of clients, sorted by who needs contact most. Clients you've
+   gone too long without speaking to (or who recently raised an issue) rise to
+   the top. This is the screen to start your day on.
+
+2. The calendar
+   The familiar client-by-day grid. Each coloured square is a logged contact:
+     - Green  = Proactive  (you reached out first)
+     - Red    = Tickets    (the client came to you with an issue)
+     - Yellow = Onboarding  (early-stage contact)
+   You can scroll through dates and clients, and filter to one type or one
+   client at a time.
+
+
+Logging a check-in
+------------------
+Click any square on the calendar (or the "Log check-in" button at the top),
+pick the client, the type, and the date — done. The dashboard updates straight
+away. Hover over a square to see what was logged and who logged it.
+
+
+Who did what
+------------
+Every check-in records the name of the person who logged it. Hover a square, or
+open its menu, and you'll see "Proactive by Mitch", for example. That's why
+everyone has their own login.
+
+
+Categories
+----------
+Green / Red / Yellow are the built-in types, but you can add your own (with your
+own colour) using "Manage categories" on the calendar.
+
+
+Where the information lives
+---------------------------
+Everything is stored securely online, not on any one computer. That means the
+whole team always sees the same up-to-date picture, from anywhere, and nothing
+is lost if a laptop breaks. Only people with a login can see or change anything.
+
+
+In short
+--------
+Log your client contacts as you go, glance at the home screen to see who's been
+neglected, and use the calendar for the full picture. The spreadsheet days are
+over.
