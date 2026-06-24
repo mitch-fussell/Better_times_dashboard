@@ -7,7 +7,14 @@ import LogCheckIn from "./LogCheckIn";
 import AccountMenu from "./AccountMenu";
 import type { Client } from "@/lib/metrics";
 
-export default function NavBar({ clients }: { clients: Pick<Client, "id" | "name">[] }) {
+export default function NavBar({
+  clients,
+  wide = false,
+}: {
+  clients: Pick<Client, "id" | "name">[];
+  // The calendar uses a wider page; match its width so the bar lines up.
+  wide?: boolean;
+}) {
   const path = usePathname();
 
   const tabs = [
@@ -16,7 +23,11 @@ export default function NavBar({ clients }: { clients: Pick<Client, "id" | "name
   ];
   return (
     <header className="bg-white">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3">
+      <div
+        className={`mx-auto flex ${
+          wide ? "max-w-7xl" : "max-w-6xl"
+        } items-center justify-between px-6 py-3`}
+      >
         <div className="flex items-center gap-4">
           <span className="flex items-center rounded-lg bg-brand px-3 py-1.5">
             <Image

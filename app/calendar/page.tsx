@@ -1,5 +1,6 @@
 import { fetchData } from "@/lib/data";
 import { buildHealth, rollup, todayISO } from "@/lib/metrics";
+import { ZOOM_LEVELS, parseZoom } from "@/lib/zoom";
 import NavBar from "@/components/NavBar";
 import CalendarGrid from "@/components/CalendarGrid";
 
@@ -15,13 +16,10 @@ function enumerateDates(startISO: string, endISO: string): string[] {
   return out;
 }
 
-const RANGE_MONTHS: Record<string, number> = { "3m": 3, "6m": 6, "12m": 12 };
-const DEFAULT_RANGE = "3m";
-
 export default async function Calendar({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ zoom?: string }>;
 }) {
   const { clients, checkIns, categories, profiles } = await fetchData();
   const today = todayISO();
@@ -35,9 +33,8 @@ export default async function Calendar({
   // Map each author's id to a display name (null if they haven't set one).
   const nameById = new Map(profiles.map((p) => [p.id, p.display_name?.trim() || null]));
 
-  const requested = (await searchParams).range ?? "";
-  const range = requested in RANGE_MONTHS ? requested : DEFAULT_RANGE;
-  const months = RANGE_MONTHS[range];
+  const zoom = parseZoom((await searchParams).zoom);
+  const months = ZOOM_LEVELS[zoom].months;
 
   // The timeline runs from the Monday on/before "N months ago" through the
   // Sunday of next week. The grid fills the screen width and scrolls back
@@ -101,8 +98,8 @@ export default async function Calendar({
 
   return (
     <>
-      <NavBar clients={clientOptions} />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
+      <NavBar clients={clientOptions} wide />
+      <main className="mx-auto w-full max-w-7xl flex-1 px-6 py-8">
         <h1 className="text-xl font-semibold text-brand">Check-in calendar</h1>
         <p className="mt-1 text-sm text-slate-500">
           Each cell is a logged check-in. Click any cell to log one.
@@ -115,7 +112,7 @@ export default async function Calendar({
             monthSpans={monthSpans}
             grid={grid}
             today={today}
-            range={range}
+            zoom={zoom}
             categories={categories}
             metrics={metrics}
           />

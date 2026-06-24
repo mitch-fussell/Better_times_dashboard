@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { Category, Client } from "@/lib/metrics";
+import { ZOOM_LEVELS, DEFAULT_ZOOM, DATE_LABEL_MIN_PX } from "@/lib/zoom";
 import ManageCategories from "./ManageCategories";
 import AddClient from "./AddClient";
 import EditClient from "./EditClient";
@@ -11,9 +12,8 @@ import EditClient from "./EditClient";
 // Fixed, explicit column widths keep every day exactly the same size. With the
 // default auto table-layout the browser rounds hundreds of narrow columns to
 // whole pixels independently, which both varied the cell sizes and squished the
-// two-digit date numbers.
+// two-digit date numbers. The day-column width comes from the current zoom level.
 const NAME_COL_PX = 192; // matches the w-48 client column
-const CELL_PX = 26; // wide columns so dates have room and cells read clearly
 
 // Vertical window: only ~15 client rows show at once, so the grid stays compact
 // and the cells can be taller/easier to read. The rest scroll within the box,
@@ -46,7 +46,7 @@ export default function CalendarGrid({
   monthSpans,
   grid,
   today,
-  range,
+  zoom,
   categories,
   metrics,
 }: {
@@ -56,11 +56,20 @@ export default function CalendarGrid({
   // client_id -> date -> check-ins logged that day (category slug + who logged it)
   grid: Record<string, Record<string, CellEntry[]>>;
   today: string;
-  range: string;
+  zoom: number;
   categories: Category[];
   metrics: Metrics;
 }) {
   const router = useRouter();
+
+  // Zoom drives both the column width and (server-side) the months loaded, so
+  // stepping it navigates to refetch the right window. Lower = out, higher = in.
+  const cellPx = ZOOM_LEVELS[zoom].cellPx;
+  const showDateLabels = cellPx >= DATE_LABEL_MIN_PX;
+  function goZoom(i: number) {
+    const z = Math.min(ZOOM_LEVELS.length - 1, Math.max(0, i));
+    if (z !== zoom) router.push(`/calendar?zoom=${z}`);
+  }
 
   // Categories arrive sorted by precedence (most notable first). A cell paints
   // the most notable category present that isn't hidden by the filter.
@@ -166,19 +175,38 @@ export default function CalendarGrid({
 
       <div className="rounded-xl border border-slate-200 bg-white">
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-3 py-2 text-sm">
-          <label htmlFor="range" className="font-medium text-slate-600">
-            Range
-          </label>
-          <select
-            id="range"
-            value={range}
-            onChange={(e) => router.push(`/calendar?range=${e.target.value}`)}
-            className="rounded-lg border border-slate-300 px-2 py-1 text-sm"
-          >
-            <option value="3m">3 months</option>
-            <option value="6m">6 months</option>
-            <option value="12m">12 months</option>
-          </select>
+          <span className="font-medium text-slate-600">Zoom</span>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => goZoom(zoom - 1)}
+              disabled={zoom <= 0}
+              title="Zoom out — fit more days"
+              aria-label="Zoom out"
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-300 text-base font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+            >
+              −
+            </button>
+            <button
+              type="button"
+              onClick={() => goZoom(zoom + 1)}
+              disabled={zoom >= ZOOM_LEVELS.length - 1}
+              title="Zoom in — fewer, bigger days"
+              aria-label="Zoom in"
+              className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-300 text-base font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+            >
+              +
+            </button>
+            <button
+              type="button"
+              onClick={() => goZoom(DEFAULT_ZOOM)}
+              disabled={zoom === DEFAULT_ZOOM}
+              title="Reset zoom"
+              className="rounded-lg border border-slate-300 px-2 py-1 text-sm font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40"
+            >
+              Reset
+            </button>
+          </div>
 
           <span className="ml-2 font-medium text-slate-600">Filter</span>
           {categories.map((c) => {
@@ -239,12 +267,12 @@ export default function CalendarGrid({
         >
           <table
             className="table-fixed border-separate border-spacing-0 text-xs"
-            style={{ width: NAME_COL_PX + dates.length * CELL_PX }}
+            style={{ width: NAME_COL_PX + dates.length * cellPx }}
           >
             <colgroup>
               <col style={{ width: NAME_COL_PX }} />
               {dates.map((d) => (
-                <col key={d} style={{ width: CELL_PX }} />
+                <col key={d} style={{ width: cellPx }} />
               ))}
             </colgroup>
             <thead>
@@ -293,10 +321,12 @@ export default function CalendarGrid({
                         isToday ? "bg-slate-300" : weekend ? "bg-slate-50" : "bg-white"
                       } ${divider}`}
                     >
-                      <span className="flex flex-col items-center leading-tight">
-                        <span className="text-[10px] uppercase text-black">{weekdayLetter}</span>
-                        <span className="text-xs font-medium tabular-nums">{d.slice(8, 10)}</span>
-                      </span>
+                      {showDateLabels && (
+                        <span className="flex flex-col items-center leading-tight">
+                          <span className="text-[10px] uppercase text-black">{weekdayLetter}</span>
+                          <span className="text-xs font-medium tabular-nums">{d.slice(8, 10)}</span>
+                        </span>
+                      )}
                     </th>
                   );
                 })}
