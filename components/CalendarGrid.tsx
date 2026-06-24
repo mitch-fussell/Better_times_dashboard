@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import type { Category, Client } from "@/lib/metrics";
 import ManageCategories from "./ManageCategories";
 import AddClient from "./AddClient";
+import EditClient from "./EditClient";
 
 // Fixed, explicit column widths keep every day exactly the same size. With the
 // default auto table-layout the browser rounds hundreds of narrow columns to
@@ -49,7 +50,7 @@ export default function CalendarGrid({
   categories,
   metrics,
 }: {
-  clients: Pick<Client, "id" | "name">[];
+  clients: Pick<Client, "id" | "name" | "cadence_days" | "status">[];
   dates: string[];
   monthSpans: { label: string; count: number }[];
   // client_id -> date -> check-ins logged that day (category slug + who logged it)
@@ -89,6 +90,9 @@ export default function CalendarGrid({
   const [error, setError] = useState<string | null>(null);
   const [manageOpen, setManageOpen] = useState(false);
   const [addClientOpen, setAddClientOpen] = useState(false);
+  const [editClient, setEditClient] = useState<
+    Pick<Client, "id" | "name" | "cadence_days" | "status"> | null
+  >(null);
 
   // Open (and re-pin after a range change) scrolled to the most recent dates,
   // i.e. the right edge of the timeline.
@@ -284,11 +288,30 @@ export default function CalendarGrid({
                 return (
                   <tr key={client.id} className="group">
                     <td
-                      title={client.name}
                       style={{ height: ROW_PX }}
-                      className="sticky left-0 z-10 w-48 max-w-48 truncate bg-white px-3 font-medium text-slate-700 group-hover:bg-slate-50"
+                      className="sticky left-0 z-10 w-48 max-w-48 bg-white px-3 font-medium text-slate-700 group-hover:bg-slate-50"
                     >
-                      {client.name}
+                      <div className="flex items-center gap-1">
+                        <span title={client.name} className="flex-1 truncate">
+                          {client.name}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setEditClient(client)}
+                          title={`Edit ${client.name}`}
+                          aria-label={`Edit ${client.name}`}
+                          className="shrink-0 rounded p-0.5 text-slate-400 opacity-0 hover:bg-slate-200 hover:text-slate-700 focus:opacity-100 group-hover:opacity-100"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                            className="h-3.5 w-3.5"
+                          >
+                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-8.5 8.5a1 1 0 01-.464.263l-3 .75a.5.5 0 01-.606-.606l.75-3a1 1 0 01.263-.464l8.5-8.5z" />
+                          </svg>
+                        </button>
+                      </div>
                     </td>
                     {dates.map((d) => {
                       // Most notable category present that isn't hidden.
@@ -404,6 +427,10 @@ export default function CalendarGrid({
       )}
 
       {addClientOpen && <AddClient onClose={() => setAddClientOpen(false)} />}
+
+      {editClient && (
+        <EditClient client={editClient} onClose={() => setEditClient(null)} />
+      )}
     </>
   );
 }

@@ -74,7 +74,7 @@ export default async function Calendar({
 
   const sortedClients = [...clients]
     .sort((a, b) => a.name.localeCompare(b.name))
-    .map((c) => ({ id: c.id, name: c.name }));
+    .map((c) => ({ id: c.id, name: c.name, cadence_days: c.cadence_days, status: c.status }));
   const clientOptions = clients.map((c) => ({ id: c.id, name: c.name }));
 
   // Month label spans for the header.
