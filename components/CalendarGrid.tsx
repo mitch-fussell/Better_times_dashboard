@@ -93,6 +93,14 @@ export default function CalendarGrid({
   const [editClient, setEditClient] = useState<
     Pick<Client, "id" | "name" | "cadence_days" | "status"> | null
   >(null);
+  const [showChurned, setShowChurned] = useState(false);
+
+  // Churned clients are hidden by default; the toggle reveals them (e.g. to edit
+  // one back to active). It only appears when there's something to reveal.
+  const hasChurned = clients.some((c) => c.status === "churned");
+  const visibleClients = showChurned
+    ? clients
+    : clients.filter((c) => c.status !== "churned");
 
   // Open (and re-pin after a range change) scrolled to the most recent dates,
   // i.e. the right edge of the timeline.
@@ -196,6 +204,18 @@ export default function CalendarGrid({
             );
           })}
 
+          {hasChurned && (
+            <label className="ml-2 flex items-center gap-1.5 text-sm text-slate-600">
+              <input
+                type="checkbox"
+                checked={showChurned}
+                onChange={(e) => setShowChurned(e.target.checked)}
+                className="rounded border-slate-300"
+              />
+              Show churned
+            </label>
+          )}
+
           <button
             type="button"
             onClick={() => setAddClientOpen(true)}
@@ -283,7 +303,7 @@ export default function CalendarGrid({
               </tr>
             </thead>
             <tbody>
-              {clients.map((client) => {
+              {visibleClients.map((client) => {
                 const row = grid[client.id];
                 return (
                   <tr key={client.id} className="group">
@@ -292,9 +312,19 @@ export default function CalendarGrid({
                       className="sticky left-0 z-10 w-48 max-w-48 bg-white px-3 font-medium text-slate-700 group-hover:bg-slate-50"
                     >
                       <div className="flex items-center gap-1">
-                        <span title={client.name} className="flex-1 truncate">
+                        <span
+                          title={client.name}
+                          className={`flex-1 truncate ${
+                            client.status === "churned" ? "text-slate-400" : ""
+                          }`}
+                        >
                           {client.name}
                         </span>
+                        {client.status === "churned" && (
+                          <span className="shrink-0 rounded bg-slate-100 px-1 text-[10px] font-medium uppercase tracking-wide text-slate-400">
+                            churned
+                          </span>
+                        )}
                         <button
                           type="button"
                           onClick={() => setEditClient(client)}

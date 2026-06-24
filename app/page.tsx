@@ -29,9 +29,12 @@ function StatCard({
 
 export default async function Dashboard() {
   const { clients, checkIns } = await fetchData();
-  const health = buildHealth(clients, checkIns);
+  // Churned clients are former clients — exclude them so they don't sit "overdue"
+  // forever and skew the stats, matching how the calendar hides them.
+  const activeClients = clients.filter((c) => c.status !== "churned");
+  const health = buildHealth(activeClients, checkIns);
   const totals = rollup(health);
-  const clientOptions = clients.map((c) => ({ id: c.id, name: c.name }));
+  const clientOptions = activeClients.map((c) => ({ id: c.id, name: c.name }));
 
   const ratioPct =
     totals.proactiveRatio === null ? "—" : `${Math.round(totals.proactiveRatio * 100)}%`;

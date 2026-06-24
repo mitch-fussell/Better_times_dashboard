@@ -26,6 +26,12 @@ export default async function Calendar({
   const { clients, checkIns, categories, profiles } = await fetchData();
   const today = todayISO();
 
+  // Churned clients are hidden from the calendar (toggleable in the grid so they
+  // can still be edited back). They're excluded from the metrics entirely, so a
+  // former client doesn't sit "overdue" forever and skew the numbers.
+  const activeClients = clients.filter((c) => c.status !== "churned");
+  const activeIds = new Set(activeClients.map((c) => c.id));
+
   // Map each author's id to a display name (null if they haven't set one).
   const nameById = new Map(profiles.map((p) => [p.id, p.display_name?.trim() || null]));
 
@@ -59,23 +65,26 @@ export default async function Calendar({
     const row = (grid[c.client_id] ??= {});
     const arr = (row[c.occurred_on] ??= []);
     arr.push({ type: c.type, by: c.created_by ? nameById.get(c.created_by) ?? null : null });
+    // Churned clients still render their history (when revealed) but don't count
+    // toward the metrics.
+    if (!activeIds.has(c.client_id)) continue;
     countsByType[c.type] = (countsByType[c.type] ?? 0) + 1;
     contacted.add(c.client_id);
   }
 
   // Overdue is "right now" across all history, not tied to the visible window.
-  const overdueCount = rollup(buildHealth(clients, checkIns)).overdue;
+  const overdueCount = rollup(buildHealth(activeClients, checkIns)).overdue;
   const metrics = {
     countsByType,
     contactedCount: contacted.size,
-    clientsTotal: clients.length,
+    clientsTotal: activeClients.length,
     overdueCount,
   };
 
   const sortedClients = [...clients]
     .sort((a, b) => a.name.localeCompare(b.name))
     .map((c) => ({ id: c.id, name: c.name, cadence_days: c.cadence_days, status: c.status }));
-  const clientOptions = clients.map((c) => ({ id: c.id, name: c.name }));
+  const clientOptions = activeClients.map((c) => ({ id: c.id, name: c.name }));
 
   // Month label spans for the header.
   const monthSpans: { label: string; count: number }[] = [];
