@@ -19,10 +19,15 @@ const NAME_COL_PX = 192; // matches the w-48 client column
 // and the cells can be taller/easier to read. The rest scroll within the box,
 // while the date header stays frozen at the top and the name column at the left.
 const VISIBLE_CLIENTS = 15;
-const ROW_PX = 34; // height of each client row
 const HEADER_MONTH_PX = 26; // top header row (month labels)
-const HEADER_DATE_PX = 40; // second header row (weekday + date number)
-const SCROLL_MAX_PX = HEADER_MONTH_PX + HEADER_DATE_PX + VISIBLE_CLIENTS * ROW_PX;
+const HEADER_DATE_FULL_PX = 40; // second header row when day labels show
+const HEADER_DATE_COMPACT_PX = 18; // shrunk when labels are hidden (zoomed out)
+
+// The scroll box is a FIXED height (sized to the default zoom), independent of
+// zoom. Zooming out shrinks the rows, so more client rows fit inside the same
+// box rather than the box itself getting smaller.
+const SCROLL_MAX_PX =
+  HEADER_MONTH_PX + HEADER_DATE_FULL_PX + VISIBLE_CLIENTS * ZOOM_LEVELS[DEFAULT_ZOOM].rowPx;
 
 interface Metrics {
   countsByType: Record<string, number>;
@@ -65,7 +70,11 @@ export default function CalendarGrid({
   // Zoom drives both the column width and (server-side) the months loaded, so
   // stepping it navigates to refetch the right window. Lower = out, higher = in.
   const cellPx = ZOOM_LEVELS[zoom].cellPx;
+  const rowPx = ZOOM_LEVELS[zoom].rowPx;
   const showDateLabels = cellPx >= DATE_LABEL_MIN_PX;
+  // Trim the (now empty) date header when labels are hidden so the zoomed-out
+  // view stays a compact heatmap rather than a short grid under a tall header.
+  const headerDatePx = showDateLabels ? HEADER_DATE_FULL_PX : HEADER_DATE_COMPACT_PX;
   function goZoom(i: number) {
     const z = Math.min(ZOOM_LEVELS.length - 1, Math.max(0, i));
     if (z !== zoom) router.push(`/calendar?zoom=${z}`);
@@ -295,7 +304,7 @@ export default function CalendarGrid({
               <tr>
                 <th
                   className="sticky left-0 z-30 w-48 bg-white px-3 text-left font-medium text-slate-500"
-                  style={{ top: HEADER_MONTH_PX, height: HEADER_DATE_PX }}
+                  style={{ top: HEADER_MONTH_PX, height: headerDatePx }}
                 >
                   Client
                 </th>
@@ -316,7 +325,7 @@ export default function CalendarGrid({
                     <th
                       key={d}
                       title={day.toLocaleString("en-US", { weekday: "long", timeZone: "UTC" })}
-                      style={{ top: HEADER_MONTH_PX, height: HEADER_DATE_PX }}
+                      style={{ top: HEADER_MONTH_PX, height: headerDatePx }}
                       className={`sticky z-20 text-center font-normal text-black ${
                         isToday ? "bg-slate-300" : weekend ? "bg-slate-50" : "bg-white"
                       } ${divider}`}
@@ -338,7 +347,7 @@ export default function CalendarGrid({
                 return (
                   <tr key={client.id} className="group">
                     <td
-                      style={{ height: ROW_PX }}
+                      style={{ height: rowPx }}
                       className="sticky left-0 z-10 w-48 max-w-48 bg-white px-3 font-medium text-slate-700 group-hover:bg-slate-50"
                     >
                       <div className="flex items-center gap-1">
@@ -401,7 +410,7 @@ export default function CalendarGrid({
                         <td
                           key={d}
                           onClick={(e) => openMenu(e, client.id, client.name, d)}
-                          style={{ height: ROW_PX, ...(color ? { backgroundColor: color } : {}) }}
+                          style={{ height: rowPx, ...(color ? { backgroundColor: color } : {}) }}
                           title={
                             summary
                               ? `${client.name} · ${d} · ${summary} — click to log another`

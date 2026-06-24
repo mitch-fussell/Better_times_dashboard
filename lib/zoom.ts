@@ -8,14 +8,15 @@
 export interface ZoomLevel {
   months: number;
   cellPx: number;
+  rowPx: number; // row height tracks column width so cells stay proportioned
 }
 
 export const ZOOM_LEVELS: ZoomLevel[] = [
-  { months: 12, cellPx: 7 }, // 0 — whole-year overview (dense, scrolls)
-  { months: 6, cellPx: 13 }, // 1
-  { months: 3, cellPx: 26 }, // 2 — default (the original view)
-  { months: 2, cellPx: 42 }, // 3
-  { months: 1, cellPx: 64 }, // 4 — a week or two on screen, big readable cells
+  { months: 12, cellPx: 7, rowPx: 16 }, // 0 — whole-year overview (dense, scrolls)
+  { months: 6, cellPx: 13, rowPx: 24 }, // 1
+  { months: 3, cellPx: 26, rowPx: 34 }, // 2 — default (the original view)
+  { months: 2, cellPx: 42, rowPx: 38 }, // 3
+  { months: 1, cellPx: 64, rowPx: 44 }, // 4 — a week or two on screen, big readable cells
 ];
 
 export const DEFAULT_ZOOM = 2;
