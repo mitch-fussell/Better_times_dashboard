@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import type { Category, Client } from "@/lib/metrics";
 import ManageCategories from "./ManageCategories";
+import AddClient from "./AddClient";
 
 // Fixed, explicit column widths keep every day exactly the same size. With the
 // default auto table-layout the browser rounds hundreds of narrow columns to
@@ -87,6 +88,7 @@ export default function CalendarGrid({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [manageOpen, setManageOpen] = useState(false);
+  const [addClientOpen, setAddClientOpen] = useState(false);
 
   // Open (and re-pin after a range change) scrolled to the most recent dates,
   // i.e. the right edge of the timeline.
@@ -192,8 +194,15 @@ export default function CalendarGrid({
 
           <button
             type="button"
+            onClick={() => setAddClientOpen(true)}
+            className="ml-auto rounded-lg border border-brand bg-brand px-2.5 py-1 text-sm font-medium text-white hover:bg-brand-dark"
+          >
+            Add client
+          </button>
+          <button
+            type="button"
             onClick={() => setManageOpen(true)}
-            className="ml-auto rounded-lg border border-slate-300 px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-50"
+            className="rounded-lg border border-slate-300 px-2.5 py-1 text-sm font-medium text-slate-600 hover:bg-slate-50"
           >
             Manage categories
           </button>
@@ -393,6 +402,8 @@ export default function CalendarGrid({
       {manageOpen && (
         <ManageCategories categories={categories} onClose={() => setManageOpen(false)} />
       )}
+
+      {addClientOpen && <AddClient onClose={() => setAddClientOpen(false)} />}
     </>
   );
 }
