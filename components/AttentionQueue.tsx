@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { TYPE_META, type Client, type ClientHealth } from "@/lib/metrics";
 import LogCheckIn from "./LogCheckIn";
 import ClientCombobox from "./ClientCombobox";
+import ExpectedDailyWorkers from "./ExpectedDailyWorkers";
 
 type Filter = "all" | "overdue" | "ontrack" | "onboarding" | "issue";
 
@@ -137,6 +138,8 @@ export default function AttentionQueue({
           <thead>
             <tr className="border-b-2 border-brand text-left text-xs uppercase tracking-wide text-slate-500">
               <th className="px-4 py-2.5 font-medium">Client</th>
+              <th className="px-4 py-2.5 font-medium">Expected daily workers</th>
+              <th className="px-4 py-2.5 font-medium">Check-in every</th>
               <th className="px-4 py-2.5 font-medium">Last contact</th>
               <th className="px-4 py-2.5 font-medium">History</th>
               <th className="px-4 py-2.5 font-medium"></th>
@@ -164,6 +167,12 @@ export default function AttentionQueue({
                   </div>
                 </td>
                 <td className="px-4 py-3">
+                  <ExpectedDailyWorkers clientId={h.client.id} value={h.client.expected_daily_workers} />
+                </td>
+                <td className="px-4 py-3 text-slate-700">
+                  {h.client.cadence_days} {h.client.cadence_days === 1 ? "day" : "days"}
+                </td>
+                <td className="px-4 py-3">
                   <LastContact h={h} />
                 </td>
                 <td className="px-4 py-3">
@@ -176,7 +185,7 @@ export default function AttentionQueue({
             ))}
             {visible.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-sm text-slate-400">
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-400">
                   No clients match.
                 </td>
               </tr>

@@ -55,7 +55,7 @@ export default function CalendarGrid({
   categories,
   metrics,
 }: {
-  clients: Pick<Client, "id" | "name" | "cadence_days" | "status">[];
+  clients: Pick<Client, "id" | "name" | "cadence_days" | "status" | "expected_daily_workers">[];
   dates: string[];
   monthSpans: { label: string; count: number }[];
   // client_id -> date -> check-ins logged that day (category slug + who logged it)
@@ -109,7 +109,7 @@ export default function CalendarGrid({
   const [manageOpen, setManageOpen] = useState(false);
   const [addClientOpen, setAddClientOpen] = useState(false);
   const [editClient, setEditClient] = useState<
-    Pick<Client, "id" | "name" | "cadence_days" | "status"> | null
+    Pick<Client, "id" | "name" | "cadence_days" | "status" | "expected_daily_workers"> | null
   >(null);
   const [showChurned, setShowChurned] = useState(false);
 
@@ -303,10 +303,16 @@ export default function CalendarGrid({
               </tr>
               <tr>
                 <th
-                  className="sticky left-0 z-30 w-48 bg-white px-3 text-left font-medium text-slate-500"
+                  className="sticky left-0 z-30 w-48 bg-white px-3 font-medium text-slate-500"
                   style={{ top: HEADER_MONTH_PX, height: headerDatePx }}
                 >
-                  Client
+                  <div className="flex items-center justify-between gap-1">
+                    <span>Client</span>
+                    <span className="flex items-center gap-1 pr-1 text-slate-400">
+                      <span title="Check-in cadence (days)">Days</span>
+                      <span title="Expected daily workers">Workers</span>
+                    </span>
+                  </div>
                 </th>
                 {dates.map((d) => {
                   const day = new Date(d + "T00:00:00Z");
@@ -364,6 +370,28 @@ export default function CalendarGrid({
                             churned
                           </span>
                         )}
+                        <span
+                          title={`Check-in every ${client.cadence_days} ${
+                            client.cadence_days === 1 ? "day" : "days"
+                          }`}
+                          className="shrink-0 rounded px-1.5 text-[11px] font-medium tabular-nums text-slate-400"
+                        >
+                          {client.cadence_days}d
+                        </span>
+                        <span
+                          title={`Expected daily workers${
+                            client.expected_daily_workers === null
+                              ? " — not set (edit to add)"
+                              : `: ${client.expected_daily_workers}`
+                          }`}
+                          className={`shrink-0 rounded px-1.5 text-[11px] font-medium tabular-nums ${
+                            client.expected_daily_workers === null
+                              ? "text-slate-300"
+                              : "bg-brand/10 text-brand"
+                          }`}
+                        >
+                          {client.expected_daily_workers ?? "—"}
+                        </span>
                         <button
                           type="button"
                           onClick={() => setEditClient(client)}

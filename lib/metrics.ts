@@ -10,6 +10,7 @@ export interface Client {
   name: string;
   status: ClientStatus;
   cadence_days: number;
+  expected_daily_workers: number | null; // entered manually, null = not set
   created_at: string;
 }
 

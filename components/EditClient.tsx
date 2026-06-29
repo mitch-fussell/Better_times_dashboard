@@ -20,13 +20,17 @@ export default function EditClient({
   client,
   onClose,
 }: {
-  client: Pick<Client, "id" | "name" | "cadence_days" | "status">;
+  client: Pick<Client, "id" | "name" | "cadence_days" | "status" | "expected_daily_workers">;
   onClose: () => void;
 }) {
   const router = useRouter();
   const [name, setName] = useState(client.name);
   const [cadence, setCadence] = useState(client.cadence_days);
   const [status, setStatus] = useState<ClientStatus>(client.status);
+  // Kept as a string so the field can be emptied (= "not set" / null).
+  const [expected, setExpected] = useState(
+    client.expected_daily_workers === null ? "" : String(client.expected_daily_workers)
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState(false);
@@ -37,12 +41,21 @@ export default function EditClient({
       setError("Please enter a client name.");
       return;
     }
+    const expTrimmed = expected.trim();
+    const expectedDailyWorkers =
+      expTrimmed === "" ? null : Math.max(0, Math.floor(Number(expTrimmed)));
+
     setSaving(true);
     setError(null);
 
     const { error } = await supabase
       .from("clients")
-      .update({ name: trimmed, cadence_days: cadence, status })
+      .update({
+        name: trimmed,
+        cadence_days: cadence,
+        status,
+        expected_daily_workers: expectedDailyWorkers,
+      })
       .eq("id", client.id);
     setSaving(false);
 
@@ -115,6 +128,27 @@ export default function EditClient({
               />
               <span className="text-sm text-slate-500">days</span>
             </div>
+          </div>
+
+          <div>
+            <label
+              htmlFor="edit-client-expected"
+              className="block text-sm font-medium text-slate-700"
+            >
+              Expected daily workers
+            </label>
+            <input
+              id="edit-client-expected"
+              type="number"
+              min={0}
+              value={expected}
+              onChange={(e) => setExpected(e.target.value)}
+              placeholder="—"
+              className="mt-1 w-20 rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              Shown next to the client on the calendar and dashboard. Leave blank to clear.
+            </p>
           </div>
 
           <div>
