@@ -13,7 +13,12 @@ import EditClient from "./EditClient";
 // default auto table-layout the browser rounds hundreds of narrow columns to
 // whole pixels independently, which both varied the cell sizes and squished the
 // two-digit date numbers. The day-column width comes from the current zoom level.
-const NAME_COL_PX = 192; // matches the w-48 client column
+// Responsive client-name column: narrow enough not to break small monitors,
+// but it grows with the viewport so long client names show in full on larger
+// screens instead of truncating. Used as a single source of truth for the
+// column's width everywhere it's needed (table width, <col>, and the sticky
+// header/body cells), so they all stay in lockstep.
+const NAME_COL = "clamp(180px, 18vw, 320px)";
 
 // Vertical window: only ~15 client rows show at once, so the grid stays compact
 // and the cells can be taller/easier to read. The rest scroll within the box,
@@ -276,10 +281,10 @@ export default function CalendarGrid({
         >
           <table
             className="table-fixed border-separate border-spacing-0 text-xs"
-            style={{ width: NAME_COL_PX + dates.length * cellPx }}
+            style={{ width: `calc(${NAME_COL} + ${dates.length * cellPx}px)` }}
           >
             <colgroup>
-              <col style={{ width: NAME_COL_PX }} />
+              <col style={{ width: NAME_COL }} />
               {dates.map((d) => (
                 <col key={d} style={{ width: cellPx }} />
               ))}
@@ -287,8 +292,8 @@ export default function CalendarGrid({
             <thead>
               <tr>
                 <th
-                  className="sticky left-0 top-0 z-30 w-48 bg-white"
-                  style={{ height: HEADER_MONTH_PX }}
+                  className="sticky left-0 top-0 z-30 bg-white"
+                  style={{ height: HEADER_MONTH_PX, width: NAME_COL }}
                 />
                 {monthSpans.map((m, i) => (
                   <th
@@ -303,8 +308,8 @@ export default function CalendarGrid({
               </tr>
               <tr>
                 <th
-                  className="sticky left-0 z-30 w-48 bg-white px-3 font-medium text-slate-500"
-                  style={{ top: HEADER_MONTH_PX, height: headerDatePx }}
+                  className="sticky left-0 z-30 bg-white px-3 font-medium text-slate-500"
+                  style={{ top: HEADER_MONTH_PX, height: headerDatePx, width: NAME_COL }}
                 >
                   <div className="flex items-center justify-between gap-1">
                     <span>Client</span>
@@ -353,8 +358,8 @@ export default function CalendarGrid({
                 return (
                   <tr key={client.id} className="group">
                     <td
-                      style={{ height: rowPx }}
-                      className="sticky left-0 z-10 w-48 max-w-48 bg-white px-3 font-medium text-slate-700 group-hover:bg-slate-50"
+                      style={{ height: rowPx, width: NAME_COL, maxWidth: NAME_COL }}
+                      className="sticky left-0 z-10 bg-white px-3 font-medium text-slate-700 group-hover:bg-slate-50"
                     >
                       <div className="flex items-center gap-1">
                         <span
