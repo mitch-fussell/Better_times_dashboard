@@ -55,7 +55,9 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     // Run on everything except static assets and image files so auth checks
-    // never block CSS/JS/images.
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    // never block CSS/JS/images. `api` is also excluded: those routes aren't
+    // pages, so redirecting them to /login is wrong — they enforce their own
+    // auth (e.g. /api/digest checks CRON_SECRET), backed by RLS.
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
