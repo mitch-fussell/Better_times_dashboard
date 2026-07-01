@@ -70,13 +70,31 @@ export default async function Calendar({
   }
 
   // Overdue is "right now" across all history, not tied to the visible window.
-  const overdueCount = rollup(buildHealth(activeClients, checkIns)).overdue;
+  const health = buildHealth(activeClients, checkIns);
   const metrics = {
     countsByType,
     contactedCount: contacted.size,
     clientsTotal: activeClients.length,
-    overdueCount,
+    overdueCount: rollup(health).overdue,
   };
+
+  // Every overdue ("red") client and how far past their own cadence they are, for
+  // the collapsible attention box above the grid. daysOver is null for clients
+  // never contacted — they sort to the top ("Never contacted"), then by most days
+  // over. cadence_days is each client's threshold; overdue means daysSince > it.
+  const overdue = health
+    .filter((h) => h.overdue)
+    .map((h) => ({
+      id: h.client.id,
+      name: h.client.name,
+      cadence: h.client.cadence_days,
+      daysOver: h.daysSince === null ? null : h.daysSince - h.client.cadence_days,
+    }))
+    .sort((a, b) => {
+      const av = a.daysOver === null ? Infinity : a.daysOver;
+      const bv = b.daysOver === null ? Infinity : b.daysOver;
+      return bv - av;
+    });
 
   const sortedClients = [...clients]
     .sort((a, b) => a.name.localeCompare(b.name))
@@ -121,6 +139,7 @@ export default async function Calendar({
             zoom={zoom}
             categories={categories}
             metrics={metrics}
+            overdue={overdue}
           />
         </div>
       </main>

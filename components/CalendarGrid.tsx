@@ -41,6 +41,33 @@ interface Metrics {
   overdueCount: number;
 }
 
+// One overdue ("red") client for the attention box: how many days past their own
+// cadence they are, or null if they've never been contacted.
+interface OverdueClient {
+  id: string;
+  name: string;
+  cadence: number;
+  daysOver: number | null;
+}
+
+// Severity tiers for the attention box, so the most urgent clients pop. Measured
+// against each client's OWN cadence (so "5 days over" means more for a weekly
+// client than a monthly one): 0 = just over, 1 = well over (>= half a cycle
+// late), 2 = severe (a full cycle+ late, or never contacted).
+const SEV = [
+  { dot: "bg-red-400", badge: "bg-red-100 text-red-700" },
+  { dot: "bg-red-500", badge: "bg-red-200 text-red-800" },
+  { dot: "bg-red-600", badge: "bg-red-600 text-white" },
+] as const;
+
+function severity(daysOver: number | null, cadence: number): 0 | 1 | 2 {
+  if (daysOver === null) return 2;
+  const ratio = daysOver / cadence;
+  if (ratio >= 1) return 2;
+  if (ratio >= 0.5) return 1;
+  return 0;
+}
+
 // One logged check-in in a day cell: its category slug and who logged it.
 interface CellEntry {
   type: string;
@@ -59,6 +86,7 @@ export default function CalendarGrid({
   zoom,
   categories,
   metrics,
+  overdue,
 }: {
   clients: Pick<Client, "id" | "name" | "cadence_days" | "status" | "expected_daily_workers">[];
   dates: string[];
@@ -69,6 +97,8 @@ export default function CalendarGrid({
   zoom: number;
   categories: Category[];
   metrics: Metrics;
+  // Overdue clients, already sorted worst-first (never-contacted, then most days over).
+  overdue: OverdueClient[];
 }) {
   const router = useRouter();
 
@@ -117,6 +147,8 @@ export default function CalendarGrid({
     Pick<Client, "id" | "name" | "cadence_days" | "status" | "expected_daily_workers"> | null
   >(null);
   const [showChurned, setShowChurned] = useState(false);
+  // Attention box starts collapsed so it barely takes any room; click to expand.
+  const [attentionOpen, setAttentionOpen] = useState(false);
 
   // Churned clients are hidden by default; the toggle reveals them (e.g. to edit
   // one back to active). It only appears when there's something to reveal.
@@ -186,6 +218,72 @@ export default function CalendarGrid({
         <Metric value={`${metrics.contactedCount}/${metrics.clientsTotal}`} label="Contacted" />
         <Metric value={metrics.overdueCount} label="Overdue" />
       </div>
+
+      {/* Collapsible attention box: every overdue ("red") client and how many days
+          past their cadence they are. Collapsed by default to save space. */}
+      {overdue.length > 0 && (
+        <div className="mb-4 overflow-hidden rounded-xl border border-red-200 bg-red-50/40">
+          <button
+            type="button"
+            onClick={() => setAttentionOpen((o) => !o)}
+            aria-expanded={attentionOpen}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-red-800 hover:bg-red-50"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              className={`h-4 w-4 shrink-0 transition-transform ${attentionOpen ? "rotate-90" : ""}`}
+            >
+              <path
+                fillRule="evenodd"
+                d="M7.293 4.293a1 1 0 011.414 0l5 5a1 1 0 010 1.414l-5 5a1 1 0 01-1.414-1.414L11.586 10 7.293 5.707a1 1 0 010-1.414z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" />
+            <span>Needs attention ({overdue.length})</span>
+            <span className="ml-1 font-normal text-red-500">
+              past check-in cadence
+            </span>
+          </button>
+
+          {attentionOpen && (
+            <ul
+              className="grid max-h-64 grid-cols-1 gap-px overflow-auto border-t border-red-200 bg-red-100 sm:grid-cols-2 lg:grid-cols-3"
+            >
+              {overdue.map((c) => {
+                const sev = severity(c.daysOver, c.cadence);
+                return (
+                  <li
+                    key={c.id}
+                    className="flex items-center gap-2 bg-white px-3 py-2 text-sm"
+                  >
+                    <span className={`h-2 w-2 shrink-0 rounded-full ${SEV[sev].dot}`} />
+                    <span className="min-w-0 flex-1 truncate font-medium text-slate-800" title={c.name}>
+                      {c.name}
+                    </span>
+                    {c.daysOver === null ? (
+                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${SEV[2].badge}`}>
+                        Never contacted
+                      </span>
+                    ) : (
+                      <span
+                        title={`Overdue by ${c.daysOver} — cadence is every ${c.cadence} ${
+                          c.cadence === 1 ? "day" : "days"
+                        }`}
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium tabular-nums ${SEV[sev].badge}`}
+                      >
+                        {c.daysOver}d over
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
 
       <div className="rounded-xl border border-slate-200 bg-white">
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-3 py-2 text-sm">
