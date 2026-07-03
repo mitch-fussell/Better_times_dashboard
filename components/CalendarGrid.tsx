@@ -124,6 +124,10 @@ export default function CalendarGrid({
   const orderedSlugs = categories.map((c) => c.slug);
   const catBySlug = new Map(categories.map((c) => [c.slug, c]));
 
+  // Clients past their check-in cadence (the same set shown in the attention
+  // box, never-contacted included) get their name highlighted red in the grid.
+  const overdueIds = new Set(overdue.map((o) => o.id));
+
   // Filter as a set of *hidden* slugs (default none) so categories added later
   // are visible automatically.
   const [hidden, setHidden] = useState<Set<string>>(() => new Set());
@@ -483,7 +487,11 @@ export default function CalendarGrid({
                         <span
                           title={client.name}
                           className={`flex-1 truncate ${
-                            client.status === "inactive" ? "text-slate-400" : ""
+                            client.status === "inactive"
+                              ? "text-slate-400"
+                              : overdueIds.has(client.id)
+                                ? "font-semibold text-red-600"
+                                : ""
                           }`}
                         >
                           {client.name}
