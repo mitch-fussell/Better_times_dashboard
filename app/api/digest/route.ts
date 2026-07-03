@@ -58,8 +58,39 @@ export async function GET(request: NextRequest) {
 
   const delivery: Record<string, string> = {};
 
-  // --- Email via Resend (optional) ---
-  if (process.env.RESEND_API_KEY && process.env.DIGEST_EMAIL_TO) {
+  const emailTo = process.env.DIGEST_EMAIL_TO?.split(",").map((s) => s.trim());
+
+  // --- Email via Gmail SMTP (optional, preferred if configured) ---
+  // Uses a Gmail account + an "app password" (Google account → Security →
+  // 2-Step Verification → App passwords). No custom domain required. Gmail
+  // rewrites the From to the authenticated account, so we always send as
+  // GMAIL_USER and only customise the display name.
+  if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD && emailTo?.length) {
+    try {
+      const nodemailer = (await import("nodemailer")).default;
+      const transport = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: process.env.GMAIL_USER,
+          // Google shows app passwords as "abcd efgh ijkl mnop"; strip spaces
+          // so a copy-paste with spaces still authenticates.
+          pass: process.env.GMAIL_APP_PASSWORD.replace(/\s/g, ""),
+        },
+      });
+      await transport.sendMail({
+        from: `BetterTimes Dashboard <${process.env.GMAIL_USER}>`,
+        to: emailTo,
+        subject: digestSubject(digest),
+        html: renderDigestHtml(digest, appUrl),
+        text: renderDigestText(digest, appUrl),
+      });
+      delivery.email = "sent (gmail)";
+    } catch (e) {
+      delivery.email = `error (gmail): ${(e as Error).message}`;
+    }
+  }
+  // --- Email via Resend (optional fallback) ---
+  else if (process.env.RESEND_API_KEY && emailTo?.length) {
     try {
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -69,18 +100,18 @@ export async function GET(request: NextRequest) {
         },
         body: JSON.stringify({
           from: process.env.DIGEST_EMAIL_FROM ?? "BetterTimes <onboarding@resend.dev>",
-          to: process.env.DIGEST_EMAIL_TO.split(",").map((s) => s.trim()),
+          to: emailTo,
           subject: digestSubject(digest),
           html: renderDigestHtml(digest, appUrl),
           text: renderDigestText(digest, appUrl),
         }),
       });
-      delivery.email = res.ok ? "sent" : `error ${res.status}: ${await res.text()}`;
+      delivery.email = res.ok ? "sent (resend)" : `error ${res.status}: ${await res.text()}`;
     } catch (e) {
       delivery.email = `error: ${(e as Error).message}`;
     }
   } else {
-    delivery.email = "skipped (RESEND_API_KEY / DIGEST_EMAIL_TO not set)";
+    delivery.email = "skipped (set GMAIL_USER + GMAIL_APP_PASSWORD + DIGEST_EMAIL_TO)";
   }
 
   // --- Slack via Incoming Webhook (optional) ---
