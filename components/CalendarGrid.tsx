@@ -72,8 +72,10 @@ function severity(daysOver: number | null, cadence: number): 0 | 1 | 2 {
   return 0;
 }
 
-// One logged check-in in a day cell: its category slug and who logged it.
+// One logged check-in in a day cell: its id (so it can be edited or deleted),
+// its category slug, and who logged it.
 interface CellEntry {
+  id: string;
   type: string;
   by: string | null;
 }
@@ -95,7 +97,7 @@ export default function CalendarGrid({
   clients: Pick<Client, "id" | "name" | "cadence_days" | "status" | "expected_daily_workers">[];
   dates: string[];
   monthSpans: { label: string; count: number }[];
-  // client_id -> date -> check-ins logged that day (category slug + who logged it)
+  // client_id -> date -> check-ins logged that day (id + category slug + who logged it)
   grid: Record<string, Record<string, CellEntry[]>>;
   today: string;
   zoom: number;
@@ -149,6 +151,8 @@ export default function CalendarGrid({
   } | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Which already-logged entry (if any) is currently having its category changed.
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [manageOpen, setManageOpen] = useState(false);
   const [addClientOpen, setAddClientOpen] = useState(false);
   const [editClient, setEditClient] = useState<
@@ -181,7 +185,13 @@ export default function CalendarGrid({
   ) {
     const rect = e.currentTarget.getBoundingClientRect();
     setError(null);
+    setEditingId(null);
     setMenu({ clientId, clientName, date, x: rect.left, y: rect.bottom + 4 });
+  }
+
+  function closeMenu() {
+    setMenu(null);
+    setEditingId(null);
   }
 
   async function log(slug: string) {
@@ -201,6 +211,34 @@ export default function CalendarGrid({
       return;
     }
     setMenu(null);
+    router.refresh();
+  }
+
+  // Re-categorise an already-logged check-in (edit its type in place).
+  async function updateEntry(id: string, slug: string) {
+    setSaving(true);
+    setError(null);
+    const { error } = await supabase.from("check_ins").update({ type: slug }).eq("id", id);
+    setSaving(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    closeMenu();
+    router.refresh();
+  }
+
+  // Remove a logged check-in entirely.
+  async function deleteEntry(id: string) {
+    setSaving(true);
+    setError(null);
+    const { error } = await supabase.from("check_ins").delete().eq("id", id);
+    setSaving(false);
+    if (error) {
+      setError(error.message);
+      return;
+    }
+    closeMenu();
     router.refresh();
   }
 
@@ -594,7 +632,7 @@ export default function CalendarGrid({
       {menu && (
         <>
           {/* Backdrop closes the menu on an outside click. */}
-          <div className="fixed inset-0 z-40" onClick={() => setMenu(null)} />
+          <div className="fixed inset-0 z-40" onClick={closeMenu} />
           <div
             className="fixed z-50 w-56 rounded-lg border border-slate-200 bg-white py-1 shadow-xl"
             style={{ top: menu.y, left: menu.x }}
@@ -604,7 +642,9 @@ export default function CalendarGrid({
               <span className="font-medium text-slate-700">{menu.clientName}</span> · {menu.date}
             </div>
 
-            {/* Existing check-ins for this day, with who logged each one. */}
+            {/* Existing check-ins for this day: each can be re-categorised (pencil)
+                or removed (trash). Clicking the pencil reveals a category picker
+                inline for that entry. */}
             {(() => {
               const existing = grid[menu.clientId]?.[menu.date];
               if (!existing?.length) return null;
@@ -612,14 +652,89 @@ export default function CalendarGrid({
                 <div className="border-t border-slate-100 px-3 py-1.5">
                   <p className="text-[11px] font-medium uppercase text-slate-400">Logged</p>
                   <ul className="mt-1 space-y-1">
-                    {existing.map((e, i) => (
-                      <li key={i} className="flex items-center gap-2 text-xs text-slate-600">
-                        <span
-                          className="h-2 w-2 shrink-0 rounded-full"
-                          style={{ backgroundColor: catBySlug.get(e.type)?.color ?? "#cbd5e1" }}
-                        />
-                        <span>{catBySlug.get(e.type)?.label ?? e.type}</span>
-                        <span className="text-slate-400">{e.by ? `· ${e.by}` : "· unknown"}</span>
+                    {existing.map((e) => (
+                      <li key={e.id} className="text-xs text-slate-600">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="h-2 w-2 shrink-0 rounded-full"
+                            style={{ backgroundColor: catBySlug.get(e.type)?.color ?? "#cbd5e1" }}
+                          />
+                          <span className="flex-1 truncate">
+                            {catBySlug.get(e.type)?.label ?? e.type}
+                          </span>
+                          <span className="shrink-0 text-slate-400">
+                            {e.by ? `· ${e.by}` : "· unknown"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setEditingId((id) => (id === e.id ? null : e.id))}
+                            aria-pressed={editingId === e.id}
+                            title="Change category"
+                            aria-label="Change category"
+                            className={`shrink-0 rounded p-0.5 hover:bg-slate-100 ${
+                              editingId === e.id ? "text-brand" : "text-slate-400 hover:text-slate-700"
+                            }`}
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                              className="h-3.5 w-3.5"
+                            >
+                              <path d="M13.586 3.586a2 2 0 112.828 2.828l-8.5 8.5a1 1 0 01-.464.263l-3 .75a.5.5 0 01-.606-.606l.75-3a1 1 0 01.263-.464l8.5-8.5z" />
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteEntry(e.id)}
+                            disabled={saving}
+                            title="Delete this check-in"
+                            aria-label="Delete this check-in"
+                            className="shrink-0 rounded p-0.5 text-slate-400 hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                              className="h-3.5 w-3.5"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+
+                        {/* Inline category picker for changing this entry's type. */}
+                        {editingId === e.id && (
+                          <div className="mt-1 flex flex-wrap gap-1 pl-4">
+                            {categories.map((c) => {
+                              const current = c.slug === e.type;
+                              return (
+                                <button
+                                  key={c.slug}
+                                  type="button"
+                                  onClick={() => updateEntry(e.id, c.slug)}
+                                  disabled={saving || current}
+                                  title={current ? `Already ${c.label}` : `Change to ${c.label}`}
+                                  className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${
+                                    current
+                                      ? "border-brand bg-brand/10 text-brand"
+                                      : "border-slate-300 text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                                  }`}
+                                >
+                                  <span
+                                    className="h-2 w-2 rounded-full"
+                                    style={{ backgroundColor: c.color }}
+                                  />
+                                  {c.label}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
                       </li>
                     ))}
                   </ul>

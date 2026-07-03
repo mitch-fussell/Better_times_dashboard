@@ -54,12 +54,12 @@ export default async function Calendar({
   // window), each with its category slug and who logged it. Plain objects/arrays
   // so it serializes to the client grid, which decides what to show based on the
   // active type filter.
-  const grid: Record<string, Record<string, { type: string; by: string | null }[]>> = {};
+  const grid: Record<string, Record<string, { id: string; type: string; by: string | null }[]>> = {};
   for (const c of checkIns) {
     if (c.occurred_on < windowStart || c.occurred_on > windowEnd) continue;
     const row = (grid[c.client_id] ??= {});
     const arr = (row[c.occurred_on] ??= []);
-    arr.push({ type: c.type, by: c.created_by ? nameById.get(c.created_by) ?? null : null });
+    arr.push({ id: c.id, type: c.type, by: c.created_by ? nameById.get(c.created_by) ?? null : null });
   }
 
   // The metric cards summarise the LAST 3 WEEKS (21 days ending today),
@@ -141,7 +141,8 @@ export default async function Calendar({
       <main className="mx-auto w-full max-w-7xl flex-1 px-6 py-8">
         <h1 className="text-xl font-semibold text-brand">Check-in calendar</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Each cell is a logged check-in. Click any cell to log one.
+          Each cell is a logged check-in. Click any cell to log one, or to edit or
+          remove what&apos;s already there.
         </p>
 
         <div className="mt-5">
