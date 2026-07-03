@@ -50,32 +50,47 @@ export default async function Calendar({
   const windowEnd = new Date(mondayThisWeek + 13 * DAY).toISOString().slice(0, 10);
   const dates = enumerateDates(windowStart, windowEnd);
 
-  // client_id -> date -> check-ins logged that day (within the window), each
-  // with its category slug and who logged it. Plain objects/arrays so it
-  // serializes to the client grid, which decides what to show based on the
+  // client_id -> date -> check-ins logged that day (within the visible zoom
+  // window), each with its category slug and who logged it. Plain objects/arrays
+  // so it serializes to the client grid, which decides what to show based on the
   // active type filter.
   const grid: Record<string, Record<string, { type: string; by: string | null }[]>> = {};
-  const countsByType: Record<string, number> = {};
-  const contacted = new Set<string>();
   for (const c of checkIns) {
     if (c.occurred_on < windowStart || c.occurred_on > windowEnd) continue;
     const row = (grid[c.client_id] ??= {});
     const arr = (row[c.occurred_on] ??= []);
     arr.push({ type: c.type, by: c.created_by ? nameById.get(c.created_by) ?? null : null });
-    // Inactive clients still render their history (when revealed) but don't count
-    // toward the metrics.
-    if (!activeIds.has(c.client_id)) continue;
-    countsByType[c.type] = (countsByType[c.type] ?? 0) + 1;
-    contacted.add(c.client_id);
   }
 
-  // Overdue is "right now" across all history, not tied to the visible window.
+  // The metric cards summarise the LAST 3 WEEKS (21 days ending today),
+  // independent of the zoom level, counting active clients only so a former
+  // client can't skew the numbers. Each category card shows its share of all
+  // check-ins logged in that window.
+  const threeWeeksAgo = new Date(todayMs - 20 * DAY).toISOString().slice(0, 10);
+  const countsByType: Record<string, number> = {};
+  let recentTotal = 0;
+  for (const c of checkIns) {
+    if (c.occurred_on < threeWeeksAgo || c.occurred_on > today) continue;
+    if (!activeIds.has(c.client_id)) continue;
+    countsByType[c.type] = (countsByType[c.type] ?? 0) + 1;
+    recentTotal += 1;
+  }
+
+  // "Reached on time" score: the share of active clients contacted before they
+  // passed their check-in cadence. buildHealth marks a client overdue when
+  // days-since-last-contact exceeds their cadence (never-contacted counts as
+  // overdue), so reached-on-time is simply the clients who are NOT overdue.
   const health = buildHealth(activeClients, checkIns);
+  const overdueCount = rollup(health).overdue;
+  const reachedOnTime = activeClients.length - overdueCount;
+  const reachedPct =
+    activeClients.length > 0 ? Math.round((reachedOnTime / activeClients.length) * 100) : null;
   const metrics = {
     countsByType,
-    contactedCount: contacted.size,
+    recentTotal,
     clientsTotal: activeClients.length,
-    overdueCount: rollup(health).overdue,
+    reachedOnTime,
+    reachedPct,
   };
 
   // Every overdue ("red") client and how far past their own cadence they are, for

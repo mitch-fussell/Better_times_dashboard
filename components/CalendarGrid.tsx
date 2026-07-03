@@ -36,9 +36,13 @@ const SCROLL_MAX_PX =
 
 interface Metrics {
   countsByType: Record<string, number>;
-  contactedCount: number;
+  // Total check-ins logged in the last 3 weeks — the denominator for the
+  // category percentages.
+  recentTotal: number;
+  // Active-client counts behind the "Reached on time" score.
   clientsTotal: number;
-  overdueCount: number;
+  reachedOnTime: number;
+  reachedPct: number | null;
 }
 
 // One overdue ("red") client for the attention box: how many days past their own
@@ -196,27 +200,43 @@ export default function CalendarGrid({
     router.refresh();
   }
 
-  const totalInView = categories.reduce(
-    (sum, c) => sum + (hidden.has(c.slug) ? 0 : (metrics.countsByType[c.slug] ?? 0)),
-    0
-  );
-
   return (
     <>
-      {/* Metrics — compact cards, smaller than the dashboard's. */}
-      <div className="mb-4 flex flex-wrap gap-2">
-        {categories.map((c) => (
+      {/* Metrics — compact cards summarising the last 3 weeks: each category's
+          share of check-ins, the total volume, and the "reached on time" score. */}
+      <div className="mb-4">
+        <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-slate-400">
+          Last 3 weeks
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {categories.map((c) => {
+            const count = metrics.countsByType[c.slug] ?? 0;
+            const pct =
+              metrics.recentTotal > 0 ? Math.round((count / metrics.recentTotal) * 100) : 0;
+            return (
+              <Metric
+                key={c.slug}
+                value={`${pct}%`}
+                sub={`${count}`}
+                label={c.label}
+                color={c.color}
+                dim={hidden.has(c.slug)}
+                title={`${c.label}: ${count} of ${metrics.recentTotal} check-ins in the last 3 weeks`}
+              />
+            );
+          })}
           <Metric
-            key={c.slug}
-            value={metrics.countsByType[c.slug] ?? 0}
-            label={c.label}
-            color={c.color}
-            dim={hidden.has(c.slug)}
+            value={metrics.recentTotal}
+            label="Check-ins"
+            title="Total check-ins logged in the last 3 weeks"
           />
-        ))}
-        <Metric value={totalInView} label="Total" />
-        <Metric value={`${metrics.contactedCount}/${metrics.clientsTotal}`} label="Contacted" />
-        <Metric value={metrics.overdueCount} label="Overdue" />
+          <Metric
+            value={metrics.reachedPct === null ? "—" : `${metrics.reachedPct}%`}
+            sub={`${metrics.reachedOnTime}/${metrics.clientsTotal}`}
+            label="Reached on time"
+            title="Active clients reached before passing their check-in cadence. Never-contacted clients count as overdue."
+          />
+        </div>
       </div>
 
       {/* Collapsible attention box: every overdue ("red") client and how many days
@@ -640,14 +660,19 @@ function Metric({
   label,
   color,
   dim,
+  sub,
+  title,
 }: {
   value: number | string;
   label: string;
   color?: string;
   dim?: boolean;
+  sub?: string;
+  title?: string;
 }) {
   return (
     <div
+      title={title}
       className={`flex min-w-[5rem] flex-col rounded-lg border border-slate-200 bg-white px-3 py-1.5 ${
         dim ? "opacity-50" : ""
       }`}
@@ -659,6 +684,9 @@ function Metric({
         )}
         {label}
       </span>
+      {sub !== undefined && (
+        <span className="text-[11px] tabular-nums text-slate-400">{sub}</span>
+      )}
     </div>
   );
 }
