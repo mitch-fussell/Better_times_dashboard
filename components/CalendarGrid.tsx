@@ -638,95 +638,80 @@ export default function CalendarGrid({
               <span className="font-medium text-slate-700">{menu.clientName}</span> · {menu.date}
             </div>
 
-            {/* Existing check-ins for this day. Each is directly editable: the
-                category picker is shown open (click a different colour to change
-                it in place), plus a clearly labelled Delete button. */}
+            {/* One simple category list. The cell's current category (the colour
+                it shows) is ticked; click a different one to change it in place.
+                An empty cell logs a new check-in instead. */}
             {(() => {
-              const existing = grid[menu.clientId]?.[menu.date];
-              if (!existing?.length) return null;
+              const entries = grid[menu.clientId]?.[menu.date] ?? [];
+              // The entry we edit is the one whose colour the cell shows: the most
+              // notable category present (same precedence used to paint the grid).
+              const primarySlug = orderedSlugs.find((s) => entries.some((e) => e.type === s));
+              const primary = primarySlug
+                ? entries.find((e) => e.type === primarySlug) ?? null
+                : null;
               return (
-                <div className="border-t border-slate-100 px-3 py-2">
-                  <p className="text-[11px] font-medium uppercase text-slate-400">
-                    {existing.length === 1 ? "Logged — edit it" : "Logged — edit each"}
+                <>
+                  <p className="px-3 pb-1 pt-0.5 text-[11px] font-medium uppercase text-slate-400">
+                    {primary ? "Change category" : "Log a check-in"}
                   </p>
-                  <ul className="mt-1.5 space-y-2.5">
-                    {existing.map((e) => (
-                      <li key={e.id} className="rounded-md bg-slate-50 p-2">
-                        <div className="flex items-center gap-2 text-xs">
-                          <span
-                            className="h-2 w-2 shrink-0 rounded-full"
-                            style={{ backgroundColor: catBySlug.get(e.type)?.color ?? "#cbd5e1" }}
-                          />
-                          <span className="flex-1 truncate font-medium text-slate-700">
-                            {catBySlug.get(e.type)?.label ?? e.type}
-                          </span>
-                          <span className="shrink-0 text-slate-400">
-                            {e.by ? `by ${e.by}` : "unknown"}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => deleteEntry(e.id)}
-                            disabled={saving}
-                            title="Delete this check-in"
-                            className="shrink-0 rounded border border-slate-300 bg-white px-1.5 py-0.5 text-[11px] font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+                  {categories.map((c) => {
+                    const current = primary?.type === c.slug;
+                    return (
+                      <button
+                        key={c.slug}
+                        onClick={() =>
+                          primary ? (current ? undefined : updateEntry(primary.id, c.slug)) : log(c.slug)
+                        }
+                        disabled={saving || current}
+                        className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-slate-50 disabled:cursor-default ${
+                          current ? "font-medium text-slate-900" : "text-slate-700"
+                        }`}
+                      >
+                        <span
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: c.color }}
+                        />
+                        <span className="flex-1">{c.label}</span>
+                        {current && (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                            className="h-4 w-4 text-brand"
                           >
-                            Delete
-                          </button>
-                        </div>
+                            <path
+                              fillRule="evenodd"
+                              d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        )}
+                      </button>
+                    );
+                  })}
 
-                        {/* Always-open category picker: click a different chip to
-                            re-categorise this entry in place. Current is highlighted. */}
-                        <div className="mt-1.5 flex flex-wrap items-center gap-1">
-                          <span className="mr-0.5 text-[11px] text-slate-400">Change to:</span>
-                          {categories.map((c) => {
-                            const current = c.slug === e.type;
-                            return (
-                              <button
-                                key={c.slug}
-                                type="button"
-                                onClick={() => updateEntry(e.id, c.slug)}
-                                disabled={saving || current}
-                                title={current ? `Already ${c.label}` : `Change to ${c.label}`}
-                                className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${
-                                  current
-                                    ? "border-brand bg-brand text-white"
-                                    : "border-slate-300 text-slate-600 hover:bg-white disabled:opacity-50"
-                                }`}
-                              >
-                                <span
-                                  className="h-2 w-2 rounded-full"
-                                  style={{ backgroundColor: current ? "#fff" : c.color }}
-                                />
-                                {c.label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                  {primary && (
+                    <>
+                      <div className="my-1 border-t border-slate-100" />
+                      <button
+                        onClick={() => deleteEntry(primary.id)}
+                        disabled={saving}
+                        className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        Remove check-in
+                      </button>
+                    </>
+                  )}
+
+                  {entries.length > 1 && (
+                    <p className="px-3 pb-1 pt-0.5 text-[11px] text-slate-400">
+                      {entries.length} logged this day — changes apply to the{" "}
+                      {catBySlug.get(primary!.type)?.label ?? primary!.type} one.
+                    </p>
+                  )}
+                </>
               );
             })()}
-
-            <div className="my-1 border-t border-slate-100" />
-            <p className="px-3 pb-1 text-[11px] font-medium uppercase text-slate-400">
-              Add another check-in
-            </p>
-            {categories.map((c) => (
-              <button
-                key={c.slug}
-                onClick={() => log(c.slug)}
-                disabled={saving}
-                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-              >
-                <span
-                  className="h-2.5 w-2.5 rounded-full"
-                  style={{ backgroundColor: c.color }}
-                />
-                {c.label}
-              </button>
-            ))}
             {error && <p className="px-3 py-1.5 text-xs text-red-600">{error}</p>}
           </div>
         </>
