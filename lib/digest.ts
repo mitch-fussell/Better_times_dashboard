@@ -26,8 +26,8 @@ export interface Digest {
 }
 
 export function buildDigest(clients: Client[], checkIns: CheckIn[], now = new Date()): Digest {
-  // Churned clients are excluded everywhere else, so exclude them here too.
-  const active = clients.filter((c) => c.status !== "churned");
+  // Inactive clients are excluded everywhere else, so exclude them here too.
+  const active = clients.filter((c) => c.status !== "inactive");
   const health = buildHealth(active, checkIns, now);
 
   const overdue: DigestOverdue[] = health

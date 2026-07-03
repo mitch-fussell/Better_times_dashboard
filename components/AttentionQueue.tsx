@@ -35,7 +35,7 @@ function StatusBadge({ status }: { status: string }) {
   const map: Record<string, string> = {
     active: "bg-slate-100 text-slate-600",
     onboarding: "bg-amber-100 text-amber-800",
-    churned: "bg-slate-200 text-slate-500",
+    inactive: "bg-slate-200 text-slate-500",
   };
   return (
     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${map[status] ?? map.active}`}>

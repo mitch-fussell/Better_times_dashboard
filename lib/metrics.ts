@@ -3,7 +3,7 @@
 // who you HAVEN'T spoken to and who recently had a problem.
 
 export type CheckInType = "proactive" | "reactive" | "onboarding";
-export type ClientStatus = "onboarding" | "active" | "churned";
+export type ClientStatus = "onboarding" | "active" | "inactive";
 
 export interface Client {
   id: string;

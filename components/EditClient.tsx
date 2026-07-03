@@ -8,14 +8,15 @@ import type { Client, ClientStatus } from "@/lib/metrics";
 const STATUS_OPTIONS: { value: ClientStatus; label: string }[] = [
   { value: "onboarding", label: "Onboarding" },
   { value: "active", label: "Active" },
-  { value: "churned", label: "Churned" },
+  { value: "inactive", label: "Inactive" },
 ];
 
 // Edit a client's details, or remove them. Removing is a hard delete: the
 // check_ins → clients foreign key is ON DELETE CASCADE, so deleting a client
-// also deletes their entire check-in history. For a client you've simply
-// stopped working with, setting the status to "Churned" keeps the record and
-// its history instead — so we surface that as the gentler option.
+// also deletes their entire check-in history. For a client who has left, is
+// taking a break, or didn't continue past a trial, setting the status to
+// "Inactive" keeps the record and its history instead — so we surface that as
+// the gentler option.
 export default function EditClient({
   client,
   onClose,
@@ -171,7 +172,8 @@ export default function EditClient({
               ))}
             </select>
             <p className="mt-1 text-xs text-slate-400">
-              Set to “Churned” to stop working with a client while keeping their history.
+              Set to “Inactive” to archive a client (left, on a break, or a lapsed
+              trial) while keeping their history. Switch back to “Active” anytime.
             </p>
           </div>
         </div>
@@ -187,7 +189,7 @@ export default function EditClient({
               </p>
               <p className="mt-1 text-xs text-red-700">
                 This also deletes all of their logged check-ins. This can&apos;t be undone. To
-                keep the history, set the status to “Churned” instead.
+                keep the history, set the status to “Inactive” instead.
               </p>
               <div className="mt-3 flex gap-2">
                 <button
