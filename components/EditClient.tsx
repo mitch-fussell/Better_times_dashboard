@@ -3,13 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
-import type { Client, ClientStatus } from "@/lib/metrics";
-
-const STATUS_OPTIONS: { value: ClientStatus; label: string }[] = [
-  { value: "onboarding", label: "Onboarding" },
-  { value: "active", label: "Active" },
-  { value: "inactive", label: "Inactive" },
-];
+import { STATUS_OPTIONS, type Client, type ClientStatus } from "@/lib/metrics";
 
 // Edit a client's details, or remove them. Removing is a hard delete: the
 // check_ins → clients foreign key is ON DELETE CASCADE, so deleting a client
