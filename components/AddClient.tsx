@@ -3,16 +3,21 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { STATUS_OPTIONS, type ClientStatus } from "@/lib/metrics";
 
 // Add a client. A new clients row is all it takes — the calendar renders one
 // row per client, so after the refresh the new client appears as a tracked row.
-// status defaults to "active" and created_at to now() in the database; the only
-// thing we must supply is the (unique) name. Cadence drives the overdue logic,
-// so it's worth setting up front.
+// created_at defaults to now() in the database; the only thing we must supply is
+// the (unique) name. Cadence drives the overdue logic, so it's worth setting up
+// front. Status and expected daily workers are written to the same columns the
+// Edit form, dashboard table and calendar read, so they show everywhere at once.
 export default function AddClient({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [cadence, setCadence] = useState(7);
+  const [status, setStatus] = useState<ClientStatus>("active");
+  // Kept as a string so the field can be left empty (= "not set" / null).
+  const [expected, setExpected] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,12 +27,22 @@ export default function AddClient({ onClose }: { onClose: () => void }) {
       setError("Please enter a client name.");
       return;
     }
+    const expTrimmed = expected.trim();
+    const expectedDailyWorkers =
+      expTrimmed === "" ? null : Math.max(0, Math.floor(Number(expTrimmed)));
+    if (expectedDailyWorkers !== null && !Number.isFinite(expectedDailyWorkers)) {
+      setError("Expected daily workers must be a number.");
+      return;
+    }
     setSaving(true);
     setError(null);
 
-    const { error } = await supabase
-      .from("clients")
-      .insert({ name: trimmed, cadence_days: cadence });
+    const { error } = await supabase.from("clients").insert({
+      name: trimmed,
+      cadence_days: cadence,
+      status,
+      expected_daily_workers: expectedDailyWorkers,
+    });
     setSaving(false);
 
     if (error) {
@@ -93,6 +108,42 @@ export default function AddClient({ onClose }: { onClose: () => void }) {
             <p className="mt-1 text-xs text-slate-400">
               Used to flag the client as overdue when it&apos;s been longer than this.
             </p>
+          </div>
+
+          <div>
+            <label htmlFor="client-expected" className="block text-sm font-medium text-slate-700">
+              Expected daily workers
+            </label>
+            <input
+              id="client-expected"
+              type="number"
+              min={0}
+              value={expected}
+              onChange={(e) => setExpected(e.target.value)}
+              placeholder="—"
+              className="mt-1 w-20 rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+            />
+            <p className="mt-1 text-xs text-slate-400">
+              Shown next to the client on the calendar and dashboard. Optional.
+            </p>
+          </div>
+
+          <div>
+            <label htmlFor="client-status" className="block text-sm font-medium text-slate-700">
+              Status
+            </label>
+            <select
+              id="client-status"
+              value={status}
+              onChange={(e) => setStatus(e.target.value as ClientStatus)}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+            >
+              {STATUS_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 

@@ -5,6 +5,13 @@
 export type CheckInType = "proactive" | "reactive" | "onboarding";
 export type ClientStatus = "onboarding" | "active" | "inactive";
 
+// Shared by the Add and Edit client forms so both offer the same choices.
+export const STATUS_OPTIONS: { value: ClientStatus; label: string }[] = [
+  { value: "onboarding", label: "Onboarding" },
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive" },
+];
+
 export interface Client {
   id: string;
   name: string;
